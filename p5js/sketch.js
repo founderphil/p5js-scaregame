@@ -7,10 +7,11 @@ const serviceUuid = "dc52d0c5-efb0-4d41-a779-98f0422da984";
 let myCharacteristic;
 let latestData = "Push the button then pass along.";
 let myBLE;
-let welcomeScreen = true;
+let welcomeScreen = false;
 let angle = 0;
 let teeterDirection = 1; //add motion
 let connectButton; 
+let loadScreen = true; // Track if we're on the load screen
 let loading = false; //for loading indicator
 let previousData = null; //for tracking BLE values
 let firstRead = true; //block first read from being a scare
@@ -34,19 +35,31 @@ function setup() {
 
   textSize(20);
   textAlign(CENTER, CENTER);
-
-  // Create the 'Connect' button, for welcome screen 
-  connectButton = createButton('Connect');
-  connectButton.position(width / 2 - 50, height / 2 + 50);
-  connectButton.mousePressed(startConnection);
-
-  // Start playing the welcome sound on loop
-  welcomeSound.loop();
+  
+  loadButton = createButton('Load Game');
+  loadButton.position(width / 2 - 50, height / 2 + 50);
+  loadButton.mousePressed(startWelcomeScreen);
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  if (loadScreen) {
+    loadButton.position(width / 2 - 50, height / 2 + 50);
+  } else if (welcomeScreen) {
+    connectButton.position(width / 2 - 50, height / 2 + 50);
+  }
+}
+
+function startWelcomeScreen() {
+  loadScreen = false;
+  welcomeScreen = true;
+  loadButton.hide();
+  
+  connectButton = createButton('Connect');
   connectButton.position(width / 2 - 50, height / 2 + 50);
+  connectButton.mousePressed(startConnection);
+
+  welcomeSound.loop();
 }
 
 function startConnection() {
@@ -127,12 +140,44 @@ function gotValue(error, value) {
 function draw() {
   background(0);
 
-  if (welcomeScreen) {
-    // Display the welcome screen
+   if (loadScreen) {
+    background(255);
+    fill(0);
+     push();
+         translate(width / 2, height / 2-150); 
+      triangle(-30, -30, -15, -45, -45, -50); // Left eye
+      triangle(30, -30, 15, -45, 45, -50); // Right eye
+
+      triangle(0, -10, -10, -25, 10, -25); // Nose
+
+    //mouth
+      beginShape();
+      vertex(-50, 0);
+      vertex(-30, 30);
+      vertex(-20, 20);
+      vertex(-10, 30);
+      vertex(0, 20);
+      vertex(10, 30);
+      vertex(20, 20);
+      vertex(30, 30);
+      vertex(50, 0);
+      vertex(20,10);
+      vertex(10,0);
+      vertex(0,10);
+      vertex(-10,0);
+      vertex(-20,10);
+      endShape(CLOSE);
+
+      pop(); 
+    textSize(32);
+    text("Pass the Jack", width / 2, height / 2 - 30);
+    textSize(16);
+    text("Click 'Load Game' to begin", width / 2, height / 2 + 20);
+  } else if (welcomeScreen) {
     fill(255);
     textSize(32);
     text("Welcome. Connect...if you dare.", width / 2, height / 2 - 30);
-
+    
     if (loading) {
       // Display loading text and pinwheel animation
       textSize(12); 
@@ -141,7 +186,7 @@ function draw() {
 
       // Draw pinwheel
       push();
-      translate(width / 2, height / 2 + 130);
+      translate(width / 2-10, height / 2 + 130);
       rotate(radians(frameCount * 5)); // Rotate over time for pinwheel effect
       stroke(255);
       strokeWeight(4);
@@ -156,10 +201,10 @@ function draw() {
     
     if (latestData === 7) {
       //the jump scare face
-      background(0);
+      background(200,0,0);
       push();
       fill(255, 0, 0); 
-      ellipse(width / 2, height / 2, 150, 150); 
+      ellipse(width / 2, height / 2, 200, 200); 
       translate(width / 2, height / 2);
       fill(0);
       triangle(-30, -30, -15, -45, -45, -50); // Left eye
