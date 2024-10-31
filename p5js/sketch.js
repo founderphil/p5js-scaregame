@@ -1,13 +1,19 @@
+//Phil Olarte. Interface Net Design. FALL 2024. NYU/
+
+//Thx Scott Fitzgerald for BLE code. https://github.com/IDMNYU/Net-Devices/blob/main/BLE-button-to-p5/p5/sketch.js
+// Music. https://youtu.be/Cyq48u25bmk?si=5CFcNLiYBEnMxMMB
+
 const serviceUuid = "dc52d0c5-efb0-4d41-a779-98f0422da984";
 let myCharacteristic;
-let latestData = 'not yet';
+let latestData = "Push the button then pass along.";
 let myBLE;
 let welcomeScreen = true;
 let angle = 0;
-let teeterDirection = 1;
-let connectButton; // Store the connect button reference
-let loading = false; // Track if we are showing the loading indicator
-let previousData = null; // Track the previous value
+let teeterDirection = 1; //add motion
+let connectButton; 
+let loading = false; //for loading indicator
+let previousData = null; //for tracking BLE values
+let firstRead = true; //block first read from being a scare
 
 let musicBoxSound, screamSound, welcomeSound;
 
@@ -22,19 +28,25 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(800, 400);
+  createCanvas(windowWidth, windowHeight);
+  // Create a p5ble class
   myBLE = new p5ble();
 
   textSize(20);
   textAlign(CENTER, CENTER);
 
-  // Create the 'Connect' button for the welcome screen
+  // Create the 'Connect' button, for welcome screen 
   connectButton = createButton('Connect');
   connectButton.position(width / 2 - 50, height / 2 + 50);
   connectButton.mousePressed(startConnection);
 
   // Start playing the welcome sound on loop
   welcomeSound.loop();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  connectButton.position(width / 2 - 50, height / 2 + 50);
 }
 
 function startConnection() {
@@ -61,58 +73,73 @@ function gotCharacteristics(error, characteristics) {
   // Stop the welcome sound when leaving the welcome screen
   welcomeSound.stop();
   
+  // Start playing the musicBoxSound immediately after connecting
+  if (!musicBoxSound.isPlaying()) {
+    musicBoxSound.loop();
+  }
+  
   // Read the characteristic value continuously
   myBLE.read(myCharacteristic, gotValue);
 }
 
-// A function that will be called once we receive values
+// A function that will be called once got values
 function gotValue(error, value) {
   if (error) {
     console.log('error: ', error);
     return;
   }
+  
+  // Skip the first read to avoid getting a random initial value
+  if (firstRead) {
+    firstRead = false;
+    previousData = value; // Initialize previousData to the first value
+    console.log("Initial read skipped, value:", value);
+    myBLE.read(myCharacteristic, gotValue); // Start continuous reading
+    return;
+  }
 
-  // Only update if the new value is different from the previous value
+  // Only update if the new value is different from the previous value - FOR PERFORMANCE
   if (value !== previousData) {
     console.log('value: ', value);
     latestData = value;
     previousData = value; // Update previous data to current
 
-    // Control the sounds based on latestData
+    // MUSIC CONTROLLER - based on var latestData
     if (latestData === 7) {
       if (musicBoxSound.isPlaying()) {
-        musicBoxSound.stop(); // Stop the music box sound
+        musicBoxSound.stop(); 
       }
       if (!screamSound.isPlaying()) {
-        screamSound.play(); // Play the scream sound once
+        screamSound.play(); 
       }
     } else {
       if (!musicBoxSound.isPlaying()) {
-        musicBoxSound.loop(); // Loop the music box sound
+        musicBoxSound.loop(); 
       }
-      screamSound.stop(); // Stop the scream sound if it was playing
+      screamSound.stop();
     }
   }
 
-  // Continue reading the characteristic value
+  // After getting a value, call p5ble.read() again to get the value again
   myBLE.read(myCharacteristic, gotValue);
 }
+
 function draw() {
-  background(0); // Set background to black
+  background(0);
 
   if (welcomeScreen) {
     // Display the welcome screen
-    fill(255); // Set text to white
+    fill(255);
     textSize(32);
     text("Welcome. Connect...if you dare.", width / 2, height / 2 - 30);
 
     if (loading) {
-      // Display loading text and pinwheel animation under the "Connect" button
-      textSize(12); // Smaller font size for loading message
+      // Display loading text and pinwheel animation
+      textSize(12); 
       fill(255);
       text("Getting BLE connection...", width / 2, height / 2 + 90);
 
-      // Draw a rotating pinwheel
+      // Draw pinwheel
       push();
       translate(width / 2, height / 2 + 130);
       rotate(radians(frameCount * 5)); // Rotate over time for pinwheel effect
@@ -126,10 +153,9 @@ function draw() {
     }
   } else {
     // Main game screen
-    fill(255, 140, 0); // Orange for the jack-o-lantern
-    textAlign(LEFT);
     
     if (latestData === 7) {
+      //the jump scare face
       background(0);
       push();
       fill(255, 0, 0); 
@@ -141,7 +167,7 @@ function draw() {
 
       triangle(0, -10, -10, -25, 10, -25); // Nose
 
-      // Draw the mouth with jagged edges
+      // mouth
       beginShape();
       vertex(-50, 0);
       vertex(-30, 50);
@@ -163,16 +189,21 @@ function draw() {
       
       fill(255);
       textAlign(CENTER);
+      textSize(26);
       text("BOO! You're out!", width / 2, height / 2+150);
+      textSize(16);
+      text("Push to play.", width / 2, height / 2+200);
     } else {
       // Default state with teetering jack-o-lantern
       push();
       translate(width / 2, height / 2);
       rotate(radians(angle));
-
-      // Draw pumpkin face shape
       fill(255, 140, 0);
-      ellipse(0, 0, 150, 150); // Pumpkin face
+      ellipse(0, 0, 150, 150);
+      fill(140, 140, 100);
+      rectMode(CENTER);
+      rect(0,-85,20,30,5,5,0,0);
+      line(-30,-70,30,-70)
 
       fill(0);
       triangle(-30, -50, -15, -30, -45, -30); // Left eye
@@ -180,7 +211,7 @@ function draw() {
 
       triangle(0, -10, -10, -25, 10, -25); // Nose
 
-      // Draw the mouth with jagged edges
+      //mouth
       beginShape();
       vertex(-50, 0);
       vertex(-30, 30);
@@ -199,6 +230,13 @@ function draw() {
       endShape(CLOSE);
 
       pop();
+      
+      fill(255);
+      textAlign(CENTER);
+      textSize(16);
+    if(latestData==="Push the button then pass along."){text('Ready?', width / 2, height / 2+120);} else{text('Push the Button', width / 2, height / 2+120);}
+      textSize(26);
+      text(latestData, width / 2, height / 2+150);
 
       // Teeter back and forth
       angle += teeterDirection * 1;
